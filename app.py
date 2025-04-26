@@ -7,10 +7,15 @@ from langchain_core.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEmbeddings
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
-
 load_dotenv()
 
 st.title("🎥 YouTube Video Q&A")
+st.header("Welcome to the YouTube Video Q&A App! ")
+st.markdown("This app allows you to interact with any YouTube video by asking questions and receiving answers based on the video’s content. Powered by Advanced AI and Natural Language Processing, the app extracts the transcript of the video and lets you query it in real time.")
+st.markdown("""How it works:
+1. Paste any YouTube video link into the sidebar.
+2. The app will fetch the transcript (if available) and process it.
+3. Ask questions about the video, and the AI will respond with accurate answers using the transcript data.""")
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -20,17 +25,30 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     st.chat_message(message["role"]).markdown(message["content"])
 
-# Input YouTube link
+
+st.sidebar.write("Ask Anything from YouTube Videos!🚀")
+st.sidebar.markdown("**Step 1:** Paste YouTube Link 📺")
+st.sidebar.markdown("**Step 1:** Wait a few second and let the app do its magic❤️")
 url = st.sidebar.text_input("Paste YouTube Link Here:")
+st.sidebar.markdown('<p style="color:red; font-weight: bold; font-size: 24px;">Key Features:</p>', unsafe_allow_html=True)
+st.sidebar.markdown('''
+1. **Instant Video Transcript Retrieval:** Quickly fetch the transcript of any video with subtitles.
+2. **Contextual Q&A:** Ask questions specific to the video and get answers based only on the content within the transcript.
+3. **Interactive Experience:** Seamlessly chat with the app to dive deeper into the video’s content.''')
+
 
 @st.cache_data(show_spinner="Fetching transcript...")
-def fetch_transcript(video_id):
+def transcribe_loading(url:str):
+    if "watch?v=" not in url:
+        return None
+    video_id = url.split("=")[1].split("&")[0]
     try:
-        transcript_load = YouTubeTranscriptApi.get_transcript(video_id, languages=["en"])
+        transcript_load = YouTubeTranscriptApi.get_transcript(video_id,languages=["en"])
         transcript_join = " ".join(text["text"] for text in transcript_load)
         return transcript_join
-    except (TranscriptsDisabled, NoTranscriptFound):
+    except (TranscriptsDisabled,NoTranscriptFound):
         return None
+
 
 @st.cache_resource(show_spinner="Loading embedding model...")
 def load_embedding_model():
@@ -44,44 +62,68 @@ def create_vectorstore(transcript_text):
     vector_store = FAISS.from_documents(documents=chunks, embedding=embedding)
     return vector_store
 
+
+vector_store=None
 if url:
-    video_id = url_cleaning(url)
-    transcript_text = fetch_transcript(video_id)
+    transcript = transcribe_loading(url)
+    if transcript:
+        vector_store = create_vectorstore(transcript)
+    else:
+        st.error("Transcript is not Avaliable for this !!!!")
 
-    if transcript_text:
-        vector_store = create_vectorstore(transcript_text)
-        retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 1})
+if vector_store:
+    query = st.chat_input("Ask something about the video:")
+    if query:
+        retriever = vector_store.as_retriever(search_type="similarity",search_kwargs={"k":3})
 
-        prompt = PromptTemplate(
-            template="Use the given piece of information in {context} to find the answer to the {question}. If you don't know the answer, just say you don't know. Don't try to make it up.",
-            input_variables=["context", "question"]
-        )
 
-        model = ChatGroq(model="llama-3.1-8b-instant", max_tokens=256)
+        template = PromptTemplate(
+                template="""You are a highly accurate assistant.
+            Use ONLY the given context to answer the user's question.
+            If the context does not contain the information needed, simply reply:
+            "I don't know based on the given context."
+            CONTEXT:
+            {context}
+            QUESTION:
+            {question}
+            Your Answer:""",
+            input_variables=["context", "question"])
 
+        model = ChatGroq(model="llama-3.1-8b-instant",max_tokens=256)
+
+        from langchain.chains import RetrievalQA
         chain = RetrievalQA.from_chain_type(
             llm=model,
             retriever=retriever,
-            chain_type_kwargs={"prompt": prompt}
-        )
+            chain_type_kwargs = {"prompt":template})
 
-        query = st.chat_input("Ask something about the video:")
-        if query:
-            st.chat_message("user").markdown(query)
-            st.session_state.messages.append({"role": "user", "content": query})
 
-            result = chain.invoke({"question": query})
+        st.chat_message("user").markdown(query)
+        st.session_state.messages.append({"role": "user", "content": query})
+
+        with st.spinner("Generating response..."):
+            result = chain.invoke({"query": query})
             response = result["result"]
 
-            st.chat_message("assistant").markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+        st.chat_message("assistant").markdown(response)
+        st.session_state.messages.append({"role": "assistant", "content": response})
 
-    else:
-        st.error("⚠️ Transcript not available for this video.")
+    # else:
+    #     st.error("⚠️ Transcript not available for this video.")
 
+st.markdown("""
+    <style>
+        .footer {
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            color: gray;
+        }
+    </style>
+    <div class="footer">
+        Made with ❤️ by Haseeb Manzoor
+    </div>
+""", unsafe_allow_html=True)
 
-
-# if __name__=="__main__":
-#     main()
-
-# GjczwkqsiFk  
