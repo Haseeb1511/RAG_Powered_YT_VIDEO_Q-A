@@ -9,7 +9,10 @@ This project builds a **Retrieval-Augmented Generation (RAG)**-based chatbot whe
 🔹 A clean **Streamlit frontend** lets you easily interact with the system.
 
 ---
-![App Screenshot](pics/Screenshot (14).png)
+**APP Homepage**
+![App Screenshot](pics/app.png)
+**AI Response**
+![AI Response](pics/ui.png)
 
 ## ✨ Features
 
