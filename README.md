@@ -38,14 +38,13 @@ This project builds a **Retrieval-Augmented Generation (RAG)**-based chatbot whe
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/yt-video-chatbot.git
-cd yt-video-chatbot
+git clone https://github.com/Haseeb1511/RAG_Powered_YT_VIDEO_Q-A.git
 ```
 
 ### 2. Create a Virtual Environment (optional but recommended)
 ```bash
 python -m venv venv
-source venv/bin/activate    # On Windows: venv\Scripts\activate
+venv\Scripts\activate
 ```
 
 ### 3. Install Required Packages
